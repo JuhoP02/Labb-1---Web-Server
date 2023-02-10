@@ -1,5 +1,6 @@
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/fcntl.h>
@@ -10,6 +11,8 @@
 #define PORT 8080
 #define BUF_SIZE 4096
 #define QUEUE_SIZE 10
+
+void Parse(char *message);
 
 int main(void) {
 
@@ -23,6 +26,8 @@ int main(void) {
   int l;
   // Declare option value
   int on = 1;
+  // Declare a path to the folder
+  char *file_path = "sample_website/";
   // Declare file descriptor
   int file;
   // Declare bytes
@@ -67,17 +72,17 @@ int main(void) {
     }
 
     // Read from accepted socket to the buffer
+
     read(sckt_accept, buf, BUF_SIZE);
 
-    // print contents of buffer
-    printf("\n\nMessage from client: %s\n\n", buf);
+    // Get Filename from request
+    Parse(buf);
+    printf("%s\n", buf);
 
     // Open file for read only
-    file = open(buf, O_RDONLY);
+    file = open("sample_website/index.html", O_RDONLY);
     if (file < 0) {
-      printf("%s", buf);
       printf("File opening failed!\n");
-      // return 0;
     }
 
     // Get all bytes from file
@@ -98,3 +103,33 @@ int main(void) {
 
   return 0;
 }
+
+void Parse(char *message) {
+
+  const char *delim = "\n ";
+
+  // Get first line
+  char *token = strtok(message, delim);
+
+  // Save first line
+  char *array[2];
+
+  // Split string with spaces
+  for (int i = 0; i < 2; i++) {
+    array[i] = token;
+    token = strtok(NULL, delim);
+  }
+
+  strcpy(message, array[1]);
+}
+
+/*
+
+const char *end_line = "\n";
+const char *space = " ";
+
+char *token = strtok(message, end_line);
+
+printf("token: %s", token);
+
+*/
