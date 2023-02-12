@@ -22,13 +22,13 @@ typedef struct status_code {
 status_code code_404 = {.code = 404, .text = "404 Not Found"};
 status_code code_200 = {.code = 200, .text = "200 OK"};
 
-char *map_name = "mime_map.txt";
+char *mime_map = "mime_map.txt";
 
 void Parse(char *message);
 void BuildResponse(char *buf, long int length, status_code code,
-                   char *mime_type);
+                   char mime_type[]);
 char *GetFileType(const char *path);
-char *MapMimeType(const char *file_type);
+char *MapMimeType(const char *mime_file, const char *file_type);
 
 int main(void) {
 
@@ -140,12 +140,10 @@ int main(void) {
     }
 
     // Gets the MIME type from file type
-    mime_type = MapMimeType(file_type);
+    mime_type = MapMimeType(mime_map, file_type);
     if (mime_type == NULL) {
       printf("No MIME Type Found!\n");
     }
-
-    printf("MIME TYPE:  %s\n", mime_type);
 
     // Creates a response for connection
     BuildResponse(buf, size, stat_code, mime_type);
@@ -163,13 +161,10 @@ int main(void) {
       if (bytes <= 0)
         break;
 
-      // printf("Sent Test 2\n");
       // Write to socket
       write(sckt_accept, buf, bytes);
       // send(sckt_accept, buf, BUF_SIZE, 0);
     }
-
-    // printf("Sent Test 3\n");
 
     // Close file and socket
     fclose(f);
@@ -204,7 +199,7 @@ void Parse(char *message) {
 }
 
 void BuildResponse(char *buf, long int length, status_code stat_code,
-                   char *mime_type) {
+                   char mime_type[]) {
 
   char append[BUF_SIZE];
 
@@ -226,7 +221,7 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
 
   strcat(buf, "Content-Type: ");
   strcat(buf, mime_type);
-  strcat(buf, "\r\n");
+  strcat(buf, "\r\n\r\n");
 
   // HTTP/1.1 200 OK\r\n
   // Server: Web Server\r\n
@@ -244,32 +239,36 @@ char *GetFileType(const char *path) {
 
   // Couldn't find a type
   if (last == NULL)
-    return NULL;
+    return "txt";
 
   return last + 1;
 }
 
-char *MapMimeType(const char *file_type) {
-  // Open MIME map file
-  FILE *f = fopen(map_name, "r");
+char *MapMimeType(const char *mime_file, const char *file_type) {
 
   char *type;
+  char line[64];
 
-  char *line;
+  // Open MIME map file
+  FILE *f = fopen(mime_file, "r");
+
   // Read lines in file
-  while (fgets(line, 64, f) != NULL) {
-    if (strcmp(line, file_type) == 1) { // If the line includes the type
-      fclose(f);
-      type = strrchr(line, '\r');
-      if (type != NULL)
-        return type + 1;
+  while (fgets(line, 64, f)) {
+
+    // If the line includes the type
+    if (strstr(line, file_type) != NULL) {
+      type = strrchr(line, ' ');
+      if (type != NULL) {
+        fclose(f);
+        return type;
+      }
+      break;
     }
   }
 
   // Close file
   fclose(f);
-
-  return "text/plain";
+  return "application/octet-stream";
 }
 
 /*
