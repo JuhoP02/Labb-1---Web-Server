@@ -25,7 +25,7 @@ status_code code_200 = {.code = 200, .text = "200 OK"};
 void Parse(char *message);
 void BuildResponse(char *buf, long int length, status_code code,
                    char *mime_type);
-char *GetMimeType(char *path);
+char *GetFileType(const char *path);
 
 int main(void) {
 
@@ -90,6 +90,7 @@ int main(void) {
 
     // Get Filename from request
     Parse(buf);
+
     char *mime_type;
     char final_path[BUF_SIZE];
     memset(&final_path, 0, BUF_SIZE * sizeof(char));
@@ -118,8 +119,9 @@ int main(void) {
       strcpy(final_path, "sample_website/404_not_found.html");
       f = fopen(final_path, "r");
 
-    } else // Found a file (code 200)
+    } else { // Found a file (code 200)
       stat_code = code_200;
+    }
 
     // Get Length of file in bytes
     fseek(f, 0L, SEEK_END);
@@ -127,17 +129,15 @@ int main(void) {
     rewind(f);
 
     // Gets the MIME type of a file from path
-    // mime_type = GetMimeType(final_path);
+    mime_type = GetFileType(final_path);
 
     // Creates a response for connection
     BuildResponse(buf, size, stat_code, mime_type);
 
-    printf("Response: %s\n", buf);
+    printf("Response: %s", buf);
 
     // Send response
     send(sckt_accept, buf, strlen(buf), 0);
-
-    // printf("Sent Test 1\n");
 
     // Get all bytes from file (body)
     while (1) {
@@ -192,7 +192,7 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
 
   char append[BUF_SIZE];
 
-  memset(&append, 0, sizeof(char));
+  memset(&append, 0, BUF_SIZE * sizeof(char));
 
   memset(buf, 0, BUF_SIZE * sizeof(char));
 
@@ -220,29 +220,17 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
   // <body>
 }
 
-char *GetMimeType(char *path) {
-
-  char *type = "none";
-  char *array[2];
-  char *last;
+char *GetFileType(const char *path) {
 
   // Gets pointer to last '.'
+  char *last;
   last = strrchr(path, '.');
 
-  printf("Length of type: %ld", strlen(last));
+  // Couldn't find a type
+  if (last == NULL)
+    return NULL;
 
-  if (last != NULL)
-    strncpy(type, last, strlen(last));
-
-  printf("Type: %s\n", type);
-
-  // Split string with
-  /*for (int i = 0; i < 2; i++) {
-    array[i] = type;
-    type = strtok(NULL, ".");
-  }*/
-
-  return type;
+  return last + 1;
 }
 
 /*
