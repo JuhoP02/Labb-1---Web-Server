@@ -1,6 +1,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,14 +9,23 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h> // read function
-#include <stdbool.h>
 
 #define PORT 8080
 #define BUF_SIZE 4096
 #define QUEUE_SIZE 10
 
+typedef struct status_code {
+  int code;
+  char *text;
+} status_code;
+
+status_code code_404 = {.code = 404, .text = "404 Not Found"};
+status_code code_200 = {.code = 200, .text = "200 OK"};
+
 void Parse(char *message);
-void BuildResponse();
+void BuildResponse(char *buf, long int length, status_code code,
+                   char *mime_type);
+char *GetMimeType(char *path);
 
 int main(void) {
 
@@ -68,6 +78,7 @@ int main(void) {
   }
 
   while (1) {
+
     sckt_accept = accept(sckt, 0, 0);
     if (sckt_accept < 0) {
       printf("Socket accept failed!\n");
@@ -75,12 +86,11 @@ int main(void) {
     }
 
     // Read from accepted socket to the buffer
-
     read(sckt_accept, buf, BUF_SIZE);
 
     // Get Filename from request
     Parse(buf);
-
+    char *mime_type;
     char final_path[BUF_SIZE];
     memset(&final_path, 0, BUF_SIZE * sizeof(char));
 
@@ -93,42 +103,60 @@ int main(void) {
       printf("File opening failed!\n");
     }*/
 
-    bool resource_found = true; 
-    
+    status_code stat_code;
+    long int size = 0;
+
+    // Try opening file with requested name
     FILE *f = fopen(final_path, "r");
-    long int size;
-    if (f == NULL) {
+
+    if (f == NULL) { // 404 resource not found
+      stat_code = code_404;
+
       printf("File opening failed!\n");
-      resource_found = false;
-    } else {
-      fseek(f, 0L, SEEK_END);
-      size = ftell(f);
-      rewind(f);
-      // printf("Size of given file: %ld\n", size);
-    }
+
+      // Set path to 404 page
+      strcpy(final_path, "sample_website/404_not_found.html");
+      f = fopen(final_path, "r");
+
+    } else // Found a file (code 200)
+      stat_code = code_200;
+
+    // Get Length of file in bytes
+    fseek(f, 0L, SEEK_END);
+    size = ftell(f);
+    rewind(f);
+
+    // Gets the MIME type of a file from path
+    // mime_type = GetMimeType(final_path);
 
     // Creates a response for connection
-    BuildResponse(buf, size);
-    
-    printf("Response: %s", buf);
+    BuildResponse(buf, size, stat_code, mime_type);
+
+    printf("Response: %s\n", buf);
 
     // Send response
     send(sckt_accept, buf, strlen(buf), 0);
 
+    // printf("Sent Test 1\n");
+
     // Get all bytes from file (body)
     while (1) {
       // Read from file
-      bytes = read(file, buf, BUF_SIZE);
+      bytes = fread(buf, BUF_SIZE, 1, f);
+      // printf("bytes: %d\n", bytes);
       if (bytes <= 0)
         break;
 
+      // printf("Sent Test 2\n");
       // Write to socket
-      // write(sckt_accept, buf, bytes);
-      send(sckt_accept, buf, BUF_SIZE, 0);
+      write(sckt_accept, buf, bytes);
+      // send(sckt_accept, buf, BUF_SIZE, 0);
     }
 
+    // printf("Sent Test 3\n");
+
     // Close file and socket
-    close(file);
+    fclose(f);
     close(sckt_accept);
   }
 
@@ -142,6 +170,11 @@ void Parse(char *message) {
   // Get first line
   char *token = strtok(message, delim);
 
+  // if (strcmp(token, "*") == 0) {
+  // token = "/";
+  //  strcpy(message, "/");
+  //}
+
   // Save first line
   char *array[2];
 
@@ -154,24 +187,30 @@ void Parse(char *message) {
   strcpy(message, array[1]);
 }
 
-void BuildResponse(char *buf, long int length) {
+void BuildResponse(char *buf, long int length, status_code stat_code,
+                   char *mime_type) {
 
   char append[BUF_SIZE];
 
   memset(&append, 0, sizeof(char));
-  
+
   memset(buf, 0, BUF_SIZE * sizeof(char));
 
-  strcat(buf, "HTTP/1.1 200 OK\r\n");
+  strcat(buf, "HTTP/1.1 ");
+  strcat(buf, stat_code.text);
+  strcat(buf, " \r\n");
+
   strcat(buf, "Server: Web Server\r\n");
 
   strcat(buf, "Content-Length: ");
-  sprintf(append,"%d",(int)length);
+  sprintf(append, "%d", (int)length);
   strcat(buf, append);
-  //strcat(buf, ltoa(length)); // Seg fault (Sprintf)
+  // strcat(buf, ltoa(length)); // Seg fault (Sprintf)
   strcat(buf, "\r\n");
 
-  strcat(buf, "Content-Type: text/html\r\n");
+  strcat(buf, "Content-Type: ");
+  strcat(buf, mime_type);
+  strcat(buf, "\r\n");
 
   // HTTP/1.1 200 OK\r\n
   // Server: Web Server\r\n
@@ -179,6 +218,31 @@ void BuildResponse(char *buf, long int length) {
   // Concent-Type: text/html\r\n
   // \r\n
   // <body>
+}
+
+char *GetMimeType(char *path) {
+
+  char *type = "none";
+  char *array[2];
+  char *last;
+
+  // Gets pointer to last '.'
+  last = strrchr(path, '.');
+
+  printf("Length of type: %ld", strlen(last));
+
+  if (last != NULL)
+    strncpy(type, last, strlen(last));
+
+  printf("Type: %s\n", type);
+
+  // Split string with
+  /*for (int i = 0; i < 2; i++) {
+    array[i] = type;
+    type = strtok(NULL, ".");
+  }*/
+
+  return type;
 }
 
 /*
