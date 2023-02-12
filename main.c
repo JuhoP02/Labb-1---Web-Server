@@ -22,10 +22,13 @@ typedef struct status_code {
 status_code code_404 = {.code = 404, .text = "404 Not Found"};
 status_code code_200 = {.code = 200, .text = "200 OK"};
 
+char *map_name = "mime_map.txt";
+
 void Parse(char *message);
 void BuildResponse(char *buf, long int length, status_code code,
                    char *mime_type);
 char *GetFileType(const char *path);
+char *MapMimeType(const char *file_type);
 
 int main(void) {
 
@@ -91,7 +94,6 @@ int main(void) {
     // Get Filename from request
     Parse(buf);
 
-    char *mime_type;
     char final_path[BUF_SIZE];
     memset(&final_path, 0, BUF_SIZE * sizeof(char));
 
@@ -128,8 +130,22 @@ int main(void) {
     size = ftell(f);
     rewind(f);
 
-    // Gets the MIME type of a file from path
-    mime_type = GetFileType(final_path);
+    char *file_type;
+    char *mime_type;
+
+    // Gets the file type from path
+    file_type = GetFileType(final_path);
+    if (file_type == NULL) {
+      printf("No File Type Found!\n");
+    }
+
+    // Gets the MIME type from file type
+    mime_type = MapMimeType(file_type);
+    if (mime_type == NULL) {
+      printf("No MIME Type Found!\n");
+    }
+
+    printf("MIME TYPE:  %s\n", mime_type);
 
     // Creates a response for connection
     BuildResponse(buf, size, stat_code, mime_type);
@@ -228,9 +244,32 @@ char *GetFileType(const char *path) {
 
   // Couldn't find a type
   if (last == NULL)
-    return "None";
+    return NULL;
 
   return last + 1;
+}
+
+char *MapMimeType(const char *file_type) {
+  // Open MIME map file
+  FILE *f = fopen(map_name, "r");
+
+  char *type;
+
+  char *line;
+  // Read lines in file
+  while (fgets(line, 64, f) != NULL) {
+    if (strcmp(line, file_type) == 1) { // If the line includes the type
+      fclose(f);
+      type = strrchr(line, '\r');
+      if (type != NULL)
+        return type + 1;
+    }
+  }
+
+  // Close file
+  fclose(f);
+
+  return "text/plain";
 }
 
 /*
