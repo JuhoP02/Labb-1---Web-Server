@@ -95,7 +95,7 @@ int main(void) {
     Parse(buf);
 
     char final_path[BUF_SIZE];
-    memset(&final_path, 0, BUF_SIZE * sizeof(char));
+    memset(&final_path, 0, sizeof(final_path));
 
     strcat(final_path, file_path);
     strcat(final_path, buf);
@@ -260,7 +260,7 @@ char *MapMimeType(const char *mime_file, const char *file_type) {
       type = strrchr(line, ' ');
       if (type != NULL) {
         fclose(f);
-        return type;
+        return type + 1;
       }
       break;
     }
