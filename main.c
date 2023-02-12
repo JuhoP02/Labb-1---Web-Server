@@ -2,17 +2,20 @@
 #include <netinet/in.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h> // read function
+#include <stdbool.h>
 
 #define PORT 8080
 #define BUF_SIZE 4096
 #define QUEUE_SIZE 10
 
 void Parse(char *message);
+void BuildResponse();
 
 int main(void) {
 
@@ -77,15 +80,42 @@ int main(void) {
 
     // Get Filename from request
     Parse(buf);
-    printf("%s\n", buf);
+
+    char final_path[BUF_SIZE];
+    memset(&final_path, 0, BUF_SIZE * sizeof(char));
+
+    strcat(final_path, file_path);
+    strcat(final_path, buf);
 
     // Open file for read only
-    file = open("sample_website/index.html", O_RDONLY);
+    /*file = open(final_path, O_RDONLY);
     if (file < 0) {
       printf("File opening failed!\n");
+    }*/
+
+    bool resource_found = true; 
+    
+    FILE *f = fopen(final_path, "r");
+    long int size;
+    if (f == NULL) {
+      printf("File opening failed!\n");
+      resource_found = false;
+    } else {
+      fseek(f, 0L, SEEK_END);
+      size = ftell(f);
+      rewind(f);
+      // printf("Size of given file: %ld\n", size);
     }
 
-    // Get all bytes from file
+    // Creates a response for connection
+    BuildResponse(buf, size);
+    
+    printf("Response: %s", buf);
+
+    // Send response
+    send(sckt_accept, buf, strlen(buf), 0);
+
+    // Get all bytes from file (body)
     while (1) {
       // Read from file
       bytes = read(file, buf, BUF_SIZE);
@@ -93,7 +123,8 @@ int main(void) {
         break;
 
       // Write to socket
-      write(sckt_accept, buf, bytes);
+      // write(sckt_accept, buf, bytes);
+      send(sckt_accept, buf, BUF_SIZE, 0);
     }
 
     // Close file and socket
@@ -121,6 +152,33 @@ void Parse(char *message) {
   }
 
   strcpy(message, array[1]);
+}
+
+void BuildResponse(char *buf, long int length) {
+
+  char append[BUF_SIZE];
+
+  memset(&append, 0, sizeof(char));
+  
+  memset(buf, 0, BUF_SIZE * sizeof(char));
+
+  strcat(buf, "HTTP/1.1 200 OK\r\n");
+  strcat(buf, "Server: Web Server\r\n");
+
+  strcat(buf, "Content-Length: ");
+  sprintf(append,"%d",(int)length);
+  strcat(buf, append);
+  //strcat(buf, ltoa(length)); // Seg fault (Sprintf)
+  strcat(buf, "\r\n");
+
+  strcat(buf, "Content-Type: text/html\r\n");
+
+  // HTTP/1.1 200 OK\r\n
+  // Server: Web Server\r\n
+  // Concent-Length: <length>\r\n
+  // Concent-Type: text/html\r\n
+  // \r\n
+  // <body>
 }
 
 /*
