@@ -203,9 +203,9 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
 
   char append[BUF_SIZE];
 
-  memset(&append, 0, BUF_SIZE * sizeof(char));
+  memset(&append, 0, sizeof(char));
 
-  memset(buf, 0, BUF_SIZE * sizeof(char));
+  memset(buf, 0, sizeof(char));
 
   strcat(buf, "HTTP/1.1 ");
   strcat(buf, stat_code.text);
