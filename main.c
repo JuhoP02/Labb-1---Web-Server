@@ -228,7 +228,7 @@ char *GetFileType(const char *path) {
 
   // Couldn't find a type
   if (last == NULL)
-    return NULL;
+    return "None";
 
   return last + 1;
 }
