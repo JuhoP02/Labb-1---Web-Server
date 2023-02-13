@@ -110,7 +110,7 @@ int main(void) {
     long int size = 0;
 
     // Try opening file with requested name
-    FILE *f = fopen(final_path, "r");
+    FILE *f = fopen(final_path, "rb");
 
     if (f == NULL) { // 404 resource not found
       stat_code = code_404;
@@ -119,7 +119,7 @@ int main(void) {
 
       // Set path to 404 page
       strcpy(final_path, "sample_website/404_not_found.html");
-      f = fopen(final_path, "r");
+      f = fopen(final_path, "rb");
 
     } else { // Found a file (code 200)
       stat_code = code_200;
@@ -153,11 +153,12 @@ int main(void) {
     // Send response
     send(sckt_accept, buf, strlen(buf), 0);
 
+    int sent_bytes = 0;
+
     // Get all bytes from file (body)
     while (1) {
       // Read from file
       bytes = fread(buf, 1, BUF_SIZE, f);
-      printf("bytes: %d\n", bytes);
 
       if (bytes <= 0)
         break;
@@ -165,8 +166,10 @@ int main(void) {
       // Write to socket
       // write(sckt_accept, buf, bytes);
       // send(sckt_accept, buf, bytes, 0);
-      send(sckt_accept, buf, bytes, 0);
+      sent_bytes = send(sckt_accept, buf, bytes, 0);
     }
+
+    printf("Sent %d bytes\n\n", sent_bytes);
 
     // Close file and socket
     fclose(f);
@@ -272,14 +275,3 @@ char *MapMimeType(const char *mime_file, const char *file_type) {
   fclose(f);
   return "application/octet-stream";
 }
-
-/*
-
-const char *end_line = "\n";
-const char *space = " ";
-
-char *token = strtok(message, end_line);
-
-printf("token: %s", token);
-
-*/
