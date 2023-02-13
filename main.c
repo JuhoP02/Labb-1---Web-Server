@@ -166,7 +166,9 @@ int main(void) {
       // Write to socket
       // write(sckt_accept, buf, bytes);
       // send(sckt_accept, buf, bytes, 0);
-      sent_bytes += send(sckt_accept, buf, bytes, 0);
+      sent_bytes += write(sckt_accept, buf, bytes);
+      
+      // sent_bytes += send(sckt_accept, buf, bytes, 0);
     }
 
     printf("Sent %d bytes\n\n", sent_bytes);
