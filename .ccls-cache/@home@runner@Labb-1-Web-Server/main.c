@@ -161,9 +161,12 @@ int main(void) {
       if (bytes <= 0)
         break;
 
+      printf("SENT BYTE");
+
       // Write to socket
       // write(sckt_accept, buf, bytes);
-      send(sckt_accept, buf, bytes, 0);
+      // send(sckt_accept, buf, bytes, 0);
+      send(sckt_accept, buf, 1, 0);
     }
 
     // Close file and socket
