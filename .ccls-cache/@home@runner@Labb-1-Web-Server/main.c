@@ -162,8 +162,8 @@ int main(void) {
         break;
 
       // Write to socket
-      write(sckt_accept, buf, bytes);
-      // send(sckt_accept, buf, BUF_SIZE, 0);
+      // write(sckt_accept, buf, bytes);
+      send(sckt_accept, buf, bytes, 0);
     }
 
     // Close file and socket
