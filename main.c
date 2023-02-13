@@ -221,7 +221,7 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
 
   strcat(buf, "Content-Type: ");
   strcat(buf, mime_type);
-  strcat(buf, "\r\n");
+  strcat(buf, "\r\n\r\n");
 
   // HTTP/1.1 200 OK\r\n
   // Server: Web Server\r\n
