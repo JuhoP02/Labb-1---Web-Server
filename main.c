@@ -156,12 +156,11 @@ int main(void) {
     // Get all bytes from file (body)
     while (1) {
       // Read from file
-      bytes = fread(buf, BUF_SIZE, 1, f);
-      // printf("bytes: %d\n", bytes);
+      bytes = fread(buf, 1, BUF_SIZE, f);
+      printf("bytes: %d\n", bytes);
+
       if (bytes <= 0)
         break;
-
-      printf("SENT BYTE");
 
       // Write to socket
       // write(sckt_accept, buf, bytes);
