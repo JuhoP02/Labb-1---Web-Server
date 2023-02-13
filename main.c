@@ -38,7 +38,7 @@ int main(void) {
   int sckt_accept;
   // Declare binding
   int b;
-  // Decalre listen
+  // Declare listen
   int l;
   // Declare option value
   int on = 1;
@@ -151,6 +151,7 @@ int main(void) {
     printf("Response: %s", buf);
 
     // Send response
+    // send(sckt_accept, buf, strlen(buf), 0);
     send(sckt_accept, buf, strlen(buf), 0);
 
     int sent_bytes = 0;
@@ -158,7 +159,11 @@ int main(void) {
     // Get all bytes from file (body)
     while (1) {
       // Read from file
+      // bytes = read(file, buf, BUF_SIZE);
       bytes = fread(buf, 1, BUF_SIZE, f);
+
+      // printf("bytes %d\n", bytes);
+      // printf("%s\n", buf);
 
       if (bytes <= 0)
         break;
@@ -167,7 +172,7 @@ int main(void) {
       // write(sckt_accept, buf, bytes);
       // send(sckt_accept, buf, bytes, 0);
       sent_bytes += write(sckt_accept, buf, bytes);
-      
+
       // sent_bytes += send(sckt_accept, buf, bytes, 0);
     }
 
@@ -188,11 +193,6 @@ void Parse(char *message) {
   // Get first line
   char *token = strtok(message, delim);
 
-  // if (strcmp(token, "*") == 0) {
-  // token = "/";
-  //  strcpy(message, "/");
-  //}
-
   // Save first line
   char *array[2];
 
@@ -210,7 +210,7 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
 
   // char append[BUF_SIZE];
 
-  memset(buf, 0, sizeof(char));
+  memset(buf, 0, BUF_SIZE);
 
   /*
   memset(&append, 0, sizeof(char));
