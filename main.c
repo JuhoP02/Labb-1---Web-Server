@@ -8,7 +8,7 @@
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h> // read function
+#include <unistd.h>
 
 #define PORT 8080
 #define BUF_SIZE 4096
@@ -166,7 +166,7 @@ int main(void) {
       // Write to socket
       // write(sckt_accept, buf, bytes);
       // send(sckt_accept, buf, bytes, 0);
-      sent_bytes = send(sckt_accept, buf, bytes, 0);
+      sent_bytes += send(sckt_accept, buf, bytes, 0);
     }
 
     printf("Sent %d bytes\n\n", sent_bytes);
@@ -206,12 +206,12 @@ void Parse(char *message) {
 void BuildResponse(char *buf, long int length, status_code stat_code,
                    char mime_type[]) {
 
-  char append[BUF_SIZE];
-
-  memset(&append, 0, sizeof(char));
+  // char append[BUF_SIZE];
 
   memset(buf, 0, sizeof(char));
 
+  /*
+  memset(&append, 0, sizeof(char));
   strcat(buf, "HTTP/1.1 ");
   strcat(buf, stat_code.text);
   strcat(buf, " \r\n");
@@ -226,7 +226,12 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
 
   strcat(buf, "Content-Type: ");
   strcat(buf, mime_type);
-  strcat(buf, "\r\n\r\n");
+  strcat(buf, "\r\n\r\n");*/
+
+  snprintf(buf, BUF_SIZE,
+           "HTTP/1.1 %s\r\nServer: Web Server\r\nContent-Length: "
+           "%d\r\nContent-Type: %s\r\n\r\n",
+           stat_code.text, (int)length, mime_type);
 
   // HTTP/1.1 200 OK\r\n
   // Server: Web Server\r\n
