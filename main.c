@@ -18,7 +18,7 @@ char *code_200 = "200 OK";
 
 void Parse(char *message);
 void BuildResponse(char *buf, long int length, char *stat_code,
-                   char mime_type[]);
+                   char *mime_type);
 char *GetFileType(const char *path);
 char *MapMimeType(const char *mime_file, const char *file_type);
 
@@ -101,7 +101,10 @@ int main(void) {
     strcat(final_path, file_path);
     strcat(final_path, buf);
 
+    // Store the current status code
     char stat_code[32];
+    memset(&stat_code, 0, sizeof(stat_code));
+
     long int size = 0;
 
     // Try opening file with requested name
@@ -118,6 +121,7 @@ int main(void) {
       strcpy(stat_code, code_200);
     }
 
+    // Get Length of the requested file
     struct stat file_stat;
     if (fstat(file, &file_stat) == -1) {
       printf("Could not get size of file!\n");
@@ -150,7 +154,7 @@ int main(void) {
     // Get all bytes from file (body)
     while (1) {
 
-      memset(&buf, 0, BUF_SIZE);
+      // memset(&buf, 0, BUF_SIZE);
 
       // Read from file
       bytes = read(file, &buf, BUF_SIZE);
@@ -190,13 +194,13 @@ void Parse(char *message) {
 }
 
 void BuildResponse(char *buf, long int length, char *stat_code,
-                   char mime_type[]) {
+                   char *mime_type) {
   memset(buf, 0, BUF_SIZE);
 
   snprintf(buf, BUF_SIZE,
            "HTTP/1.1 %s\r\nServer: Web Server\r\nContent-Type: "
-           "%s\r\nContent-Length: %d\r\n\r\n",
-           stat_code, mime_type, (int)length);
+           "%s\r\nContent-Length: %ld\r\n\r\n",
+           stat_code, mime_type, length);
 }
 
 char *GetFileType(const char *path) {
