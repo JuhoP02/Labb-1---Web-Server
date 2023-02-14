@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -110,25 +111,48 @@ int main(void) {
     long int size = 0;
 
     // Try opening file with requested name
-    FILE *f = fopen(final_path, "rb");
-
-    if (f == NULL) { // 404 resource not found
+    // FILE *f = fopen(final_path, "rb");
+    file = open(final_path, O_RDONLY);
+    if (file < 0) {
+      printf("Final path: %s\n", final_path);
+      printf("File descriptor: %d\n", file);
       stat_code = code_404;
 
       printf("File opening failed!\n");
 
       // Set path to 404 page
       strcpy(final_path, "sample_website/404_not_found.html");
-      f = fopen(final_path, "rb");
+
+      file = open(final_path, O_RDONLY);
 
     } else { // Found a file (code 200)
       stat_code = code_200;
+      printf("File descriptor: %d\n", file);
     }
+    /*
+        if (f == NULL) { // 404 resource not found
+          stat_code = code_404;
 
+          printf("File opening failed!\n");
+
+          // Set path to 404 page
+          strcpy(final_path, "sample_website/404_not_found.html");
+          f = fopen(final_path, "rb");
+
+        } else { // Found a file (code 200)
+          stat_code = code_200;
+        }
+    */
     // Get Length of file in bytes
-    fseek(f, 0L, SEEK_END);
+    /*fseek(f, 0L, SEEK_END);
     size = ftell(f);
-    rewind(f);
+    rewind(f);*/
+
+    struct stat file_stat;
+    if (fstat(file, &file_stat) == -1) {
+      printf("Could not get size of file!\n");
+    }
+    size = (long int)file_stat.st_size;
 
     char *file_type;
     char *mime_type;
@@ -160,26 +184,26 @@ int main(void) {
     while (1) {
       // Read from file
       // bytes = read(file, buf, BUF_SIZE);
-      bytes = fread(buf, 1, BUF_SIZE, f);
+      // bytes = fread(&buf, 1, BUF_SIZE, f);
 
-      // printf("bytes %d\n", bytes);
-      // printf("%s\n", buf);
+      bytes = read(file, buf, BUF_SIZE);
 
       if (bytes <= 0)
         break;
 
       // Write to socket
-      // write(sckt_accept, buf, bytes);
-      // send(sckt_accept, buf, bytes, 0);
-      sent_bytes += write(sckt_accept, buf, bytes);
+      sent_bytes += send(sckt_accept, buf, bytes, 0);
+      // sent_bytes += write(sckt_accept, buf, bytes);
 
+      printf("Sent %d bytes (%d/%ld)\n", bytes, sent_bytes, size);
       // sent_bytes += send(sckt_accept, buf, bytes, 0);
     }
 
-    printf("Sent %d bytes\n\n", sent_bytes);
+    // printf("Sent %d bytes\n\n", sent_bytes);
 
     // Close file and socket
-    fclose(f);
+    // fclose(f);
+    close(file);
     close(sckt_accept);
   }
 
