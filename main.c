@@ -1,7 +1,5 @@
 #include <netdb.h>
 #include <netinet/in.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,18 +13,11 @@
 #define BUF_SIZE 4096
 #define QUEUE_SIZE 10
 
-typedef struct status_code {
-  int code;
-  char *text;
-} status_code;
-
-status_code code_404 = {.code = 404, .text = "404 Not Found"};
-status_code code_200 = {.code = 200, .text = "200 OK"};
-
-char *mime_map = "mime_map.txt";
+char *code_404 = "404 Not Found";
+char *code_200 = "200 OK";
 
 void Parse(char *message);
-void BuildResponse(char *buf, long int length, status_code code,
+void BuildResponse(char *buf, long int length, char *stat_code,
                    char mime_type[]);
 char *GetFileType(const char *path);
 char *MapMimeType(const char *mime_file, const char *file_type);
@@ -45,6 +36,10 @@ int main(void) {
   int on = 1;
   // Declare a path to the folder
   char *file_path = "sample_website";
+  // Declare path to the mime map file
+  char *mime_map = "mime_map.txt";
+  // Declare a path to 404 page
+  char *notfound_path = "sample_website/404_not_found.html";
   // Declare file descriptor
   int file;
   // Declare bytes
@@ -63,30 +58,35 @@ int main(void) {
   // Open socket for connection
   sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (socket < 0) {
-    printf("Socket failed.\n");
-    return 0;
+    // printf("Socket failed.\n");
+    perror("Socket Failed");
+    return (-1);
   }
+
   // Set Socket Options
   setsockopt(sckt, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on));
 
   b = bind(sckt, (struct sockaddr *)&channel, sizeof(channel));
   if (b < 0) {
-    printf("Bind failed!\n");
-    return 0;
+    // printf("Bind failed!\n");
+    perror("Bind Failed");
+    return (-1);
   }
 
   l = listen(sckt, QUEUE_SIZE);
   if (l < 0) {
-    printf("Listen failed!\n");
-    return 0;
+    // printf("Listen failed!\n");
+    perror("Listen Failed failed");
+    return (-1);
   }
 
   while (1) {
 
     sckt_accept = accept(sckt, 0, 0);
     if (sckt_accept < 0) {
-      printf("Socket accept failed!\n");
-      return 0;
+      // printf("Socket accept failed!\n");
+      perror("Socket accept Failed");
+      return (-1);
     }
 
     // Read from accepted socket to the buffer
@@ -101,61 +101,31 @@ int main(void) {
     strcat(final_path, file_path);
     strcat(final_path, buf);
 
-    // Open file for read only
-    /*file = open(final_path, O_RDONLY);
-    if (file < 0) {
-      printf("File opening failed!\n");
-    }*/
-
-    status_code stat_code;
+    char stat_code[32];
     long int size = 0;
 
     // Try opening file with requested name
-    // FILE *f = fopen(final_path, "rb");
     file = open(final_path, O_RDONLY);
     if (file < 0) {
-      printf("Final path: %s\n", final_path);
-      printf("File descriptor: %d\n", file);
-      stat_code = code_404;
-
-      printf("File opening failed!\n");
-
+      // Set status code to 404
+      strcpy(stat_code, code_404);
       // Set path to 404 page
-      strcpy(final_path, "sample_website/404_not_found.html");
+      strcpy(final_path, notfound_path);
 
       file = open(final_path, O_RDONLY);
 
     } else { // Found a file (code 200)
-      stat_code = code_200;
-      printf("File descriptor: %d\n", file);
+      strcpy(stat_code, code_200);
     }
-    /*
-        if (f == NULL) { // 404 resource not found
-          stat_code = code_404;
-
-          printf("File opening failed!\n");
-
-          // Set path to 404 page
-          strcpy(final_path, "sample_website/404_not_found.html");
-          f = fopen(final_path, "rb");
-
-        } else { // Found a file (code 200)
-          stat_code = code_200;
-        }
-    */
-    // Get Length of file in bytes
-    /*fseek(f, 0L, SEEK_END);
-    size = ftell(f);
-    rewind(f);*/
 
     struct stat file_stat;
     if (fstat(file, &file_stat) == -1) {
       printf("Could not get size of file!\n");
-    }
-    size = (long int)file_stat.st_size;
+    } else
+      size = (long int)file_stat.st_size;
 
-    char *file_type;
-    char *mime_type;
+    char *file_type; // File extension
+    char *mime_type; // Mime type (text/html)
 
     // Gets the file type from path
     file_type = GetFileType(final_path);
@@ -172,13 +142,10 @@ int main(void) {
     // Creates a response for connection
     BuildResponse(buf, size, stat_code, mime_type);
 
-    printf("Response: %s", buf);
+    printf("%s", buf);
 
     // Send response
-    // send(sckt_accept, buf, strlen(buf), 0);
     send(sckt_accept, buf, strlen(buf), 0);
-
-    int sent_bytes = 0;
 
     // Get all bytes from file (body)
     while (1) {
@@ -186,26 +153,16 @@ int main(void) {
       memset(&buf, 0, BUF_SIZE);
 
       // Read from file
-      // bytes = read(file, buf, BUF_SIZE);
-      // bytes = fread(&buf, 1, BUF_SIZE, f);
-
       bytes = read(file, &buf, BUF_SIZE);
 
       if (bytes <= 0)
         break;
 
       // Write to socket
-      sent_bytes += send(sckt_accept, buf, bytes, 0);
-      // sent_bytes += write(sckt_accept, buf, bytes);
-
-      printf("Sent %d bytes (%d/%ld)\n", bytes, sent_bytes, size);
-      // sent_bytes += send(sckt_accept, buf, bytes, 0);
+      send(sckt_accept, buf, bytes, 0);
     }
 
-    // printf("Sent %d bytes\n\n", sent_bytes);
-
     // Close file and socket
-    // fclose(f);
     close(file);
     close(sckt_accept);
   }
@@ -232,42 +189,14 @@ void Parse(char *message) {
   strcpy(message, array[1]);
 }
 
-void BuildResponse(char *buf, long int length, status_code stat_code,
+void BuildResponse(char *buf, long int length, char *stat_code,
                    char mime_type[]) {
-
-  // char append[BUF_SIZE];
-
   memset(buf, 0, BUF_SIZE);
-
-  /*
-  memset(&append, 0, sizeof(char));
-  strcat(buf, "HTTP/1.1 ");
-  strcat(buf, stat_code.text);
-  strcat(buf, " \r\n");
-
-  strcat(buf, "Server: Web Server\r\n");
-
-  strcat(buf, "Content-Length: ");
-  sprintf(append, "%d", (int)length);
-  strcat(buf, append);
-  // strcat(buf, ltoa(length)); // Seg fault (Sprintf)
-  strcat(buf, "\r\n");
-
-  strcat(buf, "Content-Type: ");
-  strcat(buf, mime_type);
-  strcat(buf, "\r\n\r\n");*/
 
   snprintf(buf, BUF_SIZE,
            "HTTP/1.1 %s\r\nServer: Web Server\r\nContent-Type: "
            "%s\r\nContent-Length: %d\r\n\r\n",
-           stat_code.text, mime_type, (int)length);
-
-  // HTTP/1.1 200 OK\r\n
-  // Server: Web Server\r\n
-  // Concent-Length: <length>\r\n
-  // Concent-Type: text/html\r\n
-  // \r\n
-  // <body>
+           stat_code, mime_type, (int)length);
 }
 
 char *GetFileType(const char *path) {
@@ -296,8 +225,9 @@ char *MapMimeType(const char *mime_file, const char *file_type) {
 
     // If the line includes the type
     if (strstr(line, file_type) != NULL) {
+      // Get pointer to ' '
       type = strrchr(line, ' ');
-      if (type != NULL) {
+      if (type != NULL) { // If found a MIME type from file
         fclose(f);
         return strtok(type, "\n") + 1;
       }
@@ -307,5 +237,5 @@ char *MapMimeType(const char *mime_file, const char *file_type) {
 
   // Close file
   fclose(f);
-  return "application/octet-stream";
+  return "application/octet-stream"; // bytes
 }
