@@ -182,11 +182,14 @@ int main(void) {
 
     // Get all bytes from file (body)
     while (1) {
+
+      memset(&buf, 0, BUF_SIZE);
+
       // Read from file
       // bytes = read(file, buf, BUF_SIZE);
       // bytes = fread(&buf, 1, BUF_SIZE, f);
 
-      bytes = read(file, buf, BUF_SIZE);
+      bytes = read(file, &buf, BUF_SIZE);
 
       if (bytes <= 0)
         break;
@@ -255,9 +258,9 @@ void BuildResponse(char *buf, long int length, status_code stat_code,
   strcat(buf, "\r\n\r\n");*/
 
   snprintf(buf, BUF_SIZE,
-           "HTTP/1.1 %s\r\nServer: Web Server\r\nContent-Length: "
-           "%d\r\nContent-Type: %s\r\n\r\n",
-           stat_code.text, (int)length, mime_type);
+           "HTTP/1.1 %s\r\nServer: Web Server\r\nContent-Type: "
+           "%s\r\nContent-Length: %d\r\n\r\n",
+           stat_code.text, mime_type, (int)length);
 
   // HTTP/1.1 200 OK\r\n
   // Server: Web Server\r\n
@@ -296,7 +299,7 @@ char *MapMimeType(const char *mime_file, const char *file_type) {
       type = strrchr(line, ' ');
       if (type != NULL) {
         fclose(f);
-        return type + 1;
+        return strtok(type, "\n") + 1;
       }
       break;
     }
