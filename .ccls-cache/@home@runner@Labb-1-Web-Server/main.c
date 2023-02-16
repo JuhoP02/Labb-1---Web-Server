@@ -82,6 +82,9 @@ int main(void) {
 
   while (1) {
 
+    // Reset buffer
+    memset(&buf, 0, BUF_SIZE);
+
     sckt_accept = accept(sckt, 0, 0);
     if (sckt_accept < 0) {
       // printf("Socket accept failed!\n");
@@ -198,7 +201,7 @@ void BuildResponse(char *buf, long int length, char *stat_code,
   memset(buf, 0, BUF_SIZE);
 
   snprintf(buf, BUF_SIZE,
-           "HTTP/1.1 %s\r\nServer: Web Server\r\nContent-Type: "
+           "HTTP/1.1 %s\r\nServer: Demo Web Server\r\nContent-Type: "
            "%s\r\nContent-Length: %ld\r\n\r\n",
            stat_code, mime_type, length);
 }
