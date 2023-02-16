@@ -94,9 +94,11 @@ int main(void) {
 
     // Read from accepted socket to the buffer
     read(sckt_accept, buf, BUF_SIZE);
+    printf("Read Request!\n");
 
     // Get Filename from request
     Parse(buf);
+    printf("Parsed!\n");
 
     char final_path[BUF_SIZE];
     memset(&final_path, 0, sizeof(final_path));
@@ -148,11 +150,13 @@ int main(void) {
 
     // Creates a response for connection
     BuildResponse(buf, size, stat_code, mime_type);
+    printf("Built response\n");
 
     printf("%s", buf);
 
     // Send response
     send(sckt_accept, buf, strlen(buf), 0);
+    printf("Sent response!\n");
 
     // Get all bytes from file (body)
     while (1) {
